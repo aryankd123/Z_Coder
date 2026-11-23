@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# env files (secrets) - only the .env.example templates are tracked
+.env
+.env.*
+!.env.example
+
+# build output
+.next/
+out/
+dist/
+coverage/
+
+# local data (dev MongoDB files, benchmark scratch)
+backend/.data/
+
+# logs
+*.log
+npm-debug.log*
+
+# OS / editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
