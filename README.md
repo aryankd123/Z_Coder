@@ -2,7 +2,7 @@
 
 ZCoder is a collaborative coding platform. You create a room, invite people with a code, edit the same file together in real time, chat, and run code on the server with the output shared to the whole room.
 
-- **Frontend:** Next.js 14 (App Router) and Tailwind.
+- **Frontend:** Next.js 16 (App Router) and Tailwind.
 - **Backend:** Node.js (Express 5), MongoDB (Mongoose 8), Socket.IO and Yjs.
 
 > **Status:** v2 is being rebuilt from scratch.
@@ -30,6 +30,8 @@ flowchart LR
 ## Run it locally (Windows, no Docker needed)
 
 You need **Node.js 22 or newer**. Use three terminals (PowerShell or Git Bash).
+
+> Keep the repo **outside OneDrive** or any other synced folder. `node_modules` holds tens of thousands of files, which a sync client will try to upload and lock.
 
 ```bash
 # 1) Local MongoDB (downloads a mongod binary once, then keeps data in backend/.data)
