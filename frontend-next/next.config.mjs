@@ -19,6 +19,9 @@ const API_ORIGIN = process.env.API_ORIGIN ?? 'http://localhost:4000';
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Next 16 writes an AGENTS.md on every `next dev`; this repo doesn't use
+  // one, so turn the generator off.
+  agentRules: false,
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${API_ORIGIN}/api/:path*` }];
   },
