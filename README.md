@@ -7,7 +7,8 @@ ZCoder is a collaborative coding platform. You create a room, invite people with
 
 > **Status:** v2 is being rebuilt from scratch.
 > - **Done:** accounts and authentication, the data model with indexes, rooms with presence and live chat, the shared editor (Yjs + Monaco, live cursors), and server-side code execution with a shared console (C++17, Python 3, JavaScript).
-> - **In progress:** the Q&A board, deployment and benchmarks.
+> - **Also done:** the Q&A board (ask a problem, answer it, public feed).
+> - **In progress:** deployment, CI and benchmarks.
 > - **Deferred until Docker is allowed:** the Docker sandbox executor and the Redis/BullMQ queue.
 
 ## Architecture
