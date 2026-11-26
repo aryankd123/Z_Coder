@@ -52,4 +52,58 @@ function createAuthLimiters(limits) {
   return { perIp, loginFailuresPerEmail };
 }
 
-module.exports = { createAuthLimiters };
+/**
+ * Failed room joins per USER (wrong password, unknown code). It runs after
+ * requireAuth, so it keys on the account, not the IP: a campus NAT doesn't
+ * lock out a whole hostel, and an attacker can't rotate IPs to keep guessing
+ * one room's password.
+ * @param {number} limit failures per 15 minutes
+ */
+function createRoomJoinLimiter(limit) {
+  return rateLimit({
+    windowMs: FIFTEEN_MINUTES,
+    limit,
+    skipSuccessfulRequests: true,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    keyGenerator: (req) => `room-join:${req.auth.userId}`,
+    handler: (_req, _res, next) => next(tooManyRequests('RATE_LIMITED', 'Too many failed joins, try again later')),
+  });
+}
+
+/**
+ * A tiny in-memory fixed-window counter for things that aren't HTTP requests
+ * (chat messages over the socket). `consume(key)` returns false once `key`
+ * has used up `limit` events in the current window.
+ *
+ * Fixed window = one counter per key that resets every `windowMs`. It lets
+ * a burst of up to 2x the limit straddle a window boundary; that's fine for
+ * chat flood control. Like the stores above, it's per process.
+ *
+ * @param {{ limit: number, windowMs: number, now?: () => number }} options
+ */
+function createWindowLimiter({ limit, windowMs, now = Date.now }) {
+  /** @type {Map<string, { start: number, count: number }>} */
+  const windows = new Map();
+
+  function prune(t) {
+    for (const [key, w] of windows) if (t - w.start >= windowMs) windows.delete(key);
+  }
+
+  return {
+    /** @param {string} key @returns {boolean} true if allowed */
+    consume(key) {
+      const t = now();
+      if (windows.size > 10_000) prune(t); // bound memory: drop finished windows
+      let w = windows.get(key);
+      if (!w || t - w.start >= windowMs) {
+        w = { start: t, count: 0 };
+        windows.set(key, w);
+      }
+      w.count += 1;
+      return w.count <= limit;
+    },
+  };
+}
+
+module.exports = { createAuthLimiters, createRoomJoinLimiter, createWindowLimiter };

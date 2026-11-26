@@ -44,6 +44,10 @@ const envSchema = z.object({
   // Per 15 minutes. Generous because a campus NAT puts many users on one IP.
   AUTH_RATE_LIMIT_PER_IP: z.coerce.number().int().min(1).default(50),
   LOGIN_FAILURES_PER_EMAIL: z.coerce.number().int().min(1).default(5),
+  // Wrong room passwords per user per 15 minutes (stops password guessing on a room).
+  ROOM_JOIN_FAILURES_PER_USER: z.coerce.number().int().min(1).default(10),
+  // Chat messages per user per 10 seconds, across all of that user's sockets.
+  CHAT_MESSAGES_PER_10S: z.coerce.number().int().min(1).default(20),
 });
 
 /**
@@ -83,6 +87,8 @@ function toConfig(e) {
     rateLimits: Object.freeze({
       authPerIp: e.AUTH_RATE_LIMIT_PER_IP,
       loginFailuresPerEmail: e.LOGIN_FAILURES_PER_EMAIL,
+      roomJoinFailuresPerUser: e.ROOM_JOIN_FAILURES_PER_USER,
+      chatMessagesPer10s: e.CHAT_MESSAGES_PER_10S,
     }),
   });
 }

@@ -41,7 +41,8 @@ function validate(schemas) {
     if (issues.length > 0) {
       return next(badRequest('VALIDATION_FAILED', 'Request validation failed', issues));
     }
-    req.valid = valid;
+    // Merge, so two validate() steps on one route don't erase each other.
+    req.valid = { ...req.valid, ...valid };
     return next();
   };
 }

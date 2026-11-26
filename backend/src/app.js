@@ -21,19 +21,26 @@ const cors = require('cors');
 const pinoHttp = require('pino-http');
 const { getConfig } = require('./config');
 const { logger } = require('./lib/logger');
-const { createAuthLimiters } = require('./lib/rateLimit');
+const { createAuthLimiters, createRoomJoinLimiter } = require('./lib/rateLimit');
 const { healthRouter } = require('./routes/health');
 const { apiRouter } = require('./routes');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
+const { nullRealtime } = require('./realtime/nullRealtime');
 
 // Only accept a caller-supplied request ID if it's short and harmless
 // (prevents log injection).
 const SAFE_REQUEST_ID = /^[\w-]{1,64}$/;
 
-/** @returns {import('express').Express} */
-function createApp() {
+/**
+ * @param {{ realtime?: typeof nullRealtime }} [deps] the socket layer (RoomManager).
+ *   server.js passes the real one; tests may omit it.
+ * @returns {import('express').Express}
+ */
+function createApp({ realtime = nullRealtime } = {}) {
   const config = getConfig();
   const app = express();
+  // Controllers reach the realtime layer through app.locals (no globals).
+  app.locals.realtime = realtime;
 
   // How many proxies to trust for X-Forwarded-For. Wrong values either
   // let clients spoof their IP (too high) or rate-limit the proxy (too low).
@@ -67,7 +74,11 @@ function createApp() {
   app.use(express.json({ limit: '256kb' }));
 
   app.use(healthRouter());
-  app.use('/api', apiRouter({ limiters: createAuthLimiters(config.rateLimits) }));
+  const limiters = {
+    ...createAuthLimiters(config.rateLimits),
+    roomJoinFailuresPerUser: createRoomJoinLimiter(config.rateLimits.roomJoinFailuresPerUser),
+  };
+  app.use('/api', apiRouter({ limiters }));
 
   app.use(notFoundHandler);
   app.use(errorHandler);
