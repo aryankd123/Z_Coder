@@ -21,7 +21,7 @@ async function main() {
   // Loaded after config validation (they read config at load time).
   const { logger } = require('./lib/logger');
   const { connectDb, disconnectDb } = require('./db');
-  const { syncAllIndexes } = require('./models');
+  const { syncAllIndexes, missingIndexes } = require('./models');
   const { createApp } = require('./app');
   const { RoomManager } = require('./realtime/roomManager');
   const { attachGateway } = require('./realtime/gateway');
@@ -30,7 +30,16 @@ async function main() {
   const { createExecutionService } = require('./execution/executionService');
 
   await connectDb(config.mongodbUri, { autoIndex: !config.isProduction });
-  if (!config.isProduction) await syncAllIndexes();
+  if (!config.isProduction) {
+    await syncAllIndexes();
+  } else {
+    // Production doesn't build indexes at boot (expensive on big collections),
+    // but the unique ones are what make signup and invite codes race-safe.
+    const missing = await missingIndexes();
+    if (missing.length > 0) {
+      logger.error({ missing }, 'declared indexes are MISSING: run `npm run db:indexes` against this database');
+    }
+  }
 
   // REST and sockets share the room manager: REST reads presence from it and
   // pushes membership changes into it; execution results go to rooms through it.

@@ -24,6 +24,21 @@ async function syncAllIndexes() {
   await Promise.all(ALL_MODELS.map((m) => m.syncIndexes()));
 }
 
+/**
+ * Which declared indexes are missing from the database? (Read-only; used at
+ * production boot, where indexes are built by `npm run db:indexes`, not
+ * automatically.)
+ * @returns {Promise<string[]>} e.g. ['users: email_1']
+ */
+async function missingIndexes() {
+  const missing = [];
+  for (const model of ALL_MODELS) {
+    const { toCreate } = await model.diffIndexes();
+    for (const spec of toCreate) missing.push(`${model.collection.collectionName}: ${JSON.stringify(spec)}`);
+  }
+  return missing;
+}
+
 module.exports = {
   User,
   RefreshToken,
@@ -35,4 +50,5 @@ module.exports = {
   Answer,
   ALL_MODELS,
   syncAllIndexes,
+  missingIndexes,
 };

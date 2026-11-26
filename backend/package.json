@@ -18,7 +18,8 @@
     "bench:yjs": "node --expose-gc scripts/bench-yjs-doc.js",
     "bench:index": "node scripts/bench-index.js",
     "bench:session": "node scripts/bench-session.js",
-    "bench:chat": "node scripts/bench-chat.js"
+    "bench:chat": "node scripts/bench-chat.js",
+    "db:indexes": "node --env-file-if-exists=.env scripts/sync-indexes.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

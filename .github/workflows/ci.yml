@@ -1,0 +1,77 @@
+# CI: every push to main and every pull request.
+#   backend:  lint + the full Jest suite (real MongoDB via mongodb-memory-server;
+#             the local-executor contract tests use the runner's g++ / python3 / node)
+#   frontend: unit tests (node:test) + lint + production build
+#   secrets:  fail if a credential-looking string is committed
+# No Redis service: the queue is in-memory until BullMQ lands.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Cache the MongoDB binary used by mongodb-memory-server
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('backend/package-lock.json') }}
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: frontend-next
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend-next/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+
+  secrets:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: No credentials in tracked files
+        run: |
+          # A MongoDB URI with an inline password, a RapidAPI key variable shipped to the
+          # browser (v1's mistake), or a filled-in key line in an env template.
+          if git grep -nE 'mongodb(\+srv)?://[^<:@/ ]+:[^<@/ ]+@|NEXT_PUBLIC_RAPID|^JUDGE0_RAPIDAPI_KEY=.+' -- . ':!docs' ':!.github'; then
+            echo "Possible credential found (see above)."
+            exit 1
+          fi
+          echo "No credentials found."

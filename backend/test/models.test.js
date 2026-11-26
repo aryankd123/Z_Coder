@@ -37,6 +37,19 @@ describe('declared indexes exist in MongoDB', () => {
   });
 });
 
+describe('missingIndexes (the production boot check)', () => {
+  test('reports nothing when synced, and names a dropped unique index', async () => {
+    const { missingIndexes, syncAllIndexes } = require('../src/models');
+    expect(await missingIndexes()).toEqual([]);
+    await mongoose.connection.db.collection('users').dropIndex('email_1');
+    const missing = await missingIndexes();
+    expect(missing).toHaveLength(1);
+    expect(missing[0]).toMatch(/^users: .*"email":1/);
+    await syncAllIndexes(); // restore for the other tests
+    expect(await missingIndexes()).toEqual([]);
+  });
+});
+
 /** Walk an explain() plan tree and collect every stage. Handles classic and SBE plan shapes. */
 function stagesOf(plan, out = []) {
   if (!plan || typeof plan !== 'object') return out;
