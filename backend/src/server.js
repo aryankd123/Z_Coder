@@ -9,8 +9,8 @@
  *   2. Connect to MongoDB and await it. If that fails, exit(1). (v1 logged
  *      the error and served requests with no database.)
  *   3. In dev, sync indexes so the schema's indexes exist.
- *   4. Listen.
- * From Phase 2, the Socket.IO gateway attaches to the same HTTP server here.
+ *   4. Build the room manager, the Express app and the Socket.IO gateway,
+ *      all on ONE HTTP server (one port), then listen.
  */
 const http = require('node:http');
 const { getConfig } = require('./config');
@@ -23,11 +23,17 @@ async function main() {
   const { connectDb, disconnectDb } = require('./db');
   const { syncAllIndexes } = require('./models');
   const { createApp } = require('./app');
+  const { RoomManager } = require('./realtime/roomManager');
+  const { attachGateway } = require('./realtime/gateway');
 
   await connectDb(config.mongodbUri, { autoIndex: !config.isProduction });
   if (!config.isProduction) await syncAllIndexes();
 
-  const server = http.createServer(createApp());
+  // REST and sockets share the room manager: REST reads presence from it and
+  // pushes membership changes into it.
+  const roomManager = new RoomManager();
+  const server = http.createServer(createApp({ realtime: roomManager }));
+  const io = attachGateway(server, { roomManager });
   await new Promise((resolve) => server.listen(config.port, resolve));
   logger.info({ port: config.port, env: config.env }, 'ZCoder API listening');
 
@@ -36,7 +42,10 @@ async function main() {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info({ signal }, 'shutting down');
-    server.close(); // stop accepting new connections; in-flight ones finish
+    // Close sockets first (their disconnect handlers leave rooms), then let
+    // the room manager flush anything it holds, then the database.
+    await new Promise((resolve) => io.close(() => resolve())); // also closes the HTTP server
+    await roomManager.close();
     await disconnectDb();
     process.exit(0);
   }

@@ -29,15 +29,16 @@ const { unauthorized } = require('../lib/errors');
 const BEARER = /^Bearer\s+(\S+)$/i;
 
 /**
- * Verify an access JWT without any database access.
- * Reused by the Socket.IO handshake (Phase 2), which is why it's separate
- * from the middleware.
+ * Verify an access JWT without any database access, and also return when it
+ * expires. The Socket.IO gateway needs the expiry: a socket stays open for
+ * hours, so the server disconnects it when its token runs out (unless the
+ * client sends a fresh one with `auth:renew`).
  *
  * @param {string} token the raw JWT (no "Bearer " prefix)
- * @returns {{ userId: string }}
+ * @returns {{ userId: string, expiresAt: number }} expiresAt in epoch milliseconds
  * @throws {import('../lib/errors').AppError} 401 AUTH_EXPIRED or AUTH_INVALID
  */
-function verifyAccessToken(token) {
+function verifyAccessTokenClaims(token) {
   let payload;
   try {
     // `algorithms` is the important option. A JWT's header names its own
@@ -53,11 +54,27 @@ function verifyAccessToken(token) {
     throw unauthorized('AUTH_INVALID', 'Access token is invalid');
   }
 
-  // A correctly signed token that doesn't say WHO it's for is useless.
+  // A correctly signed token that doesn't say WHO it's for is useless, and
+  // one without an expiry would live forever (signAccessToken always sets both).
   if (typeof payload !== 'object' || typeof payload.sub !== 'string' || payload.sub === '') {
     throw unauthorized('AUTH_INVALID', 'Access token is invalid');
   }
-  return { userId: payload.sub };
+  if (typeof payload.exp !== 'number') {
+    throw unauthorized('AUTH_INVALID', 'Access token is invalid');
+  }
+  return { userId: payload.sub, expiresAt: payload.exp * 1000 };
+}
+
+/**
+ * Verify an access JWT without any database access.
+ * Used by requireAuth below and by the Socket.IO handshake.
+ *
+ * @param {string} token the raw JWT (no "Bearer " prefix)
+ * @returns {{ userId: string }}
+ * @throws {import('../lib/errors').AppError} 401 AUTH_EXPIRED or AUTH_INVALID
+ */
+function verifyAccessToken(token) {
+  return { userId: verifyAccessTokenClaims(token).userId };
 }
 
 /**
@@ -78,4 +95,4 @@ function requireAuth(req, _res, next) {
   }
 }
 
-module.exports = { requireAuth, verifyAccessToken };
+module.exports = { requireAuth, verifyAccessToken, verifyAccessTokenClaims };
