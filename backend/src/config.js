@@ -64,8 +64,9 @@ const envSchema = z.object({
   COMPILE_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(20_000),
   RUN_MEMORY_MB: z.coerce.number().int().min(32).max(512).default(256),
   JUDGE0_URL: z.url().default('https://judge0-ce.p.rapidapi.com'),
-  JUDGE0_RAPIDAPI_KEY: z.string().min(1).optional(),
-  JUDGE0_AUTH_TOKEN: z.string().min(1).optional(),
+  // `KEY=` (empty, as in .env.example) means "not set".
+  JUDGE0_RAPIDAPI_KEY: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
+  JUDGE0_AUTH_TOKEN: z.preprocess((v) => (v === '' ? undefined : v), z.string().min(1).optional()),
   // Local executor toolchain (dev). Windows' Python launcher is `python`.
   LOCAL_CXX: z.string().min(1).default('g++'),
   LOCAL_PYTHON: z.string().min(1).default(process.platform === 'win32' ? 'python' : 'python3'),

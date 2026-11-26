@@ -63,6 +63,11 @@ describe('loadConfig', () => {
       expect(() => loadConfig({ ...minimal, NODE_ENV: 'production', EXECUTOR: 'local' })).toThrow(/refused in production/);
     });
 
+    test('an empty key line (as copied from .env.example) counts as unset', () => {
+      expect(loadConfig({ ...minimal, JUDGE0_RAPIDAPI_KEY: '', JUDGE0_AUTH_TOKEN: '' }).execution.judge0.rapidApiKey).toBeUndefined();
+      expect(() => loadConfig({ ...minimal, EXECUTOR: 'judge0', JUDGE0_RAPIDAPI_KEY: '' })).toThrow(/JUDGE0_RAPIDAPI_KEY: is required/);
+    });
+
     test('Judge0 on RapidAPI needs a key; a self-hosted Judge0 does not; the key is never echoed', () => {
       expect(() => loadConfig({ ...minimal, EXECUTOR: 'judge0' })).toThrow(/JUDGE0_RAPIDAPI_KEY: is required/);
       const key = 'rapidapi-key-that-must-not-be-echoed';
