@@ -31,7 +31,7 @@ async function main() {
 
   // REST and sockets share the room manager: REST reads presence from it and
   // pushes membership changes into it.
-  const roomManager = new RoomManager();
+  const roomManager = new RoomManager({ persistDebounceMs: config.yjsPersistDebounceMs });
   const server = http.createServer(createApp({ realtime: roomManager }));
   const io = attachGateway(server, { roomManager });
   await new Promise((resolve) => server.listen(config.port, resolve));

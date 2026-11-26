@@ -77,6 +77,20 @@ const chatSendPayload = z.object({
 
 const authRenewPayload = z.object({ token: z.string().min(1).max(4096) });
 
+/**
+ * Binary payloads (Yjs updates, state vectors, awareness). Socket.IO hands
+ * binary to the server as a Buffer, which is a Uint8Array.
+ * @param {number} maxBytes
+ */
+const binary = (maxBytes) =>
+  z
+    .custom((v) => v instanceof Uint8Array, 'must be binary')
+    .refine((v) => v.byteLength <= maxBytes, `must be at most ${maxBytes} bytes`);
+
+const yjsSyncPayload = z.object({ roomId: objectId, stateVector: binary(64 * 1024) });
+const yjsUpdatePayload = z.object({ roomId: objectId, update: binary(512 * 1024) });
+const awarenessPayload = z.object({ roomId: objectId, update: binary(16 * 1024) });
+
 module.exports = {
   createRoomBody,
   joinRoomBody,
@@ -88,4 +102,7 @@ module.exports = {
   socketRoomRef,
   chatSendPayload,
   authRenewPayload,
+  yjsSyncPayload,
+  yjsUpdatePayload,
+  awarenessPayload,
 };

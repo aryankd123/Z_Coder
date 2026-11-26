@@ -14,7 +14,8 @@
  *      `auth:renew { token }` with a fresh token before then; otherwise the
  *      server emits `error { code: AUTH_EXPIRED }` and disconnects the socket.
  *      Without this, a revoked user's open socket would work forever.
- *   3. Events: room:join, room:leave, chat:send, auth:renew. Every handler
+ *   3. Events: room:join, room:leave, chat:send, auth:renew, and the shared
+ *      editor's yjs:sync, yjs:update, awareness:update. Every handler
  *      validates its payload and checks room membership (see handler.js).
  *   4. Disconnect: leave every room (presence updates for the others).
  */
@@ -25,6 +26,7 @@ const { unauthorized } = require('../lib/errors');
 const { createWindowLimiter } = require('../lib/rateLimit');
 const { on, toAckError } = require('./handler');
 const { registerChat } = require('./chat');
+const { registerYjs } = require('./yjsProvider');
 const { socketRoomRef, authRenewPayload } = require('../validators/room');
 
 /**
@@ -103,6 +105,7 @@ function attachGateway(httpServer, { roomManager, extraHandlers = [] }) {
     });
 
     registerChat(socket, { roomManager, limiter: chatLimiter });
+    registerYjs(socket, { roomManager });
     for (const register of extraHandlers) register(socket);
 
     socket.on('disconnect', () => {

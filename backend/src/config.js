@@ -48,6 +48,8 @@ const envSchema = z.object({
   ROOM_JOIN_FAILURES_PER_USER: z.coerce.number().int().min(1).default(10),
   // Chat messages per user per 10 seconds, across all of that user's sockets.
   CHAT_MESSAGES_PER_10S: z.coerce.number().int().min(1).default(20),
+  // Save a room's Yjs document this long after the last edit (debounce).
+  YJS_PERSIST_DEBOUNCE_MS: z.coerce.number().int().min(10).max(60_000).default(2000),
 });
 
 /**
@@ -81,6 +83,7 @@ function toConfig(e) {
     corsOrigins: Object.freeze(e.CORS_ORIGINS),
     trustProxy: e.TRUST_PROXY,
     logLevel: e.LOG_LEVEL,
+    yjsPersistDebounceMs: e.YJS_PERSIST_DEBOUNCE_MS,
     // Secure cookies need HTTPS. Browsers treat http://localhost as secure, but
     // we only force it in production, where the site is always HTTPS.
     cookieSecure: isProduction,
