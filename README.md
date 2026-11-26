@@ -6,8 +6,9 @@ ZCoder is a collaborative coding platform. You create a room, invite people with
 - **Backend:** Node.js (Express 5), MongoDB (Mongoose 8), Socket.IO and Yjs.
 
 > **Status:** v2 is being rebuilt from scratch.
-> - **Done:** accounts and authentication, the data model with indexes, rooms with presence and live chat, and the shared editor (Yjs + Monaco, live cursors).
-> - **In progress:** code execution.
+> - **Done:** accounts and authentication, the data model with indexes, rooms with presence and live chat, the shared editor (Yjs + Monaco, live cursors), and server-side code execution with a shared console (C++17, Python 3, JavaScript).
+> - **In progress:** the Q&A board, deployment and benchmarks.
+> - **Deferred until Docker is allowed:** the Docker sandbox executor and the Redis/BullMQ queue.
 
 ## Architecture
 
@@ -16,7 +17,7 @@ flowchart LR
   B[Browser] -- "/api/* same origin" --> N[Next.js rewrite proxy] --> A[Express API]
   B -. "WebSocket (rooms, editor, chat)" .-> A
   A --> M[(MongoDB)]
-  A -. "jobs" .-> Q[Queue] -.-> X[Code executor]
+  A -- "jobs" --> Q[In-memory queue] --> X["Executor: Judge0 or local (dev)"]
 ```
 
 - The browser only talks to the Next.js origin, which proxies `/api/*` to the API. That keeps the refresh-token cookie first-party.
@@ -62,6 +63,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('base64url'))"
 
 The API **refuses to start** if a required variable is missing or invalid, and it tells you which one.
 
+**Running code locally.** By default `EXECUTOR=local`, which runs submitted code as child processes on your machine. It has timeouts and output caps but **no sandbox**, so use it only for your own testing. It needs `g++` (C++) and Python on your `PATH`; JavaScript uses the same Node.js as the API. The server refuses `EXECUTOR=local` when `NODE_ENV=production`. To use Judge0 instead, set `EXECUTOR=judge0` plus your own `JUDGE0_RAPIDAPI_KEY`, or a self-hosted `JUDGE0_URL`.
+
 ## Environment variables
 
 **Backend** (`backend/.env`; every variable is documented in [backend/.env.example](backend/.env.example)):
@@ -80,13 +83,20 @@ The API **refuses to start** if a required variable is missing or invalid, and i
 | `ROOM_JOIN_FAILURES_PER_USER` | | 10 | Wrong room password or unknown code, per 15 minutes |
 | `CHAT_MESSAGES_PER_10S` | | 20 | Chat messages per user per 10 seconds |
 | `YJS_PERSIST_DEBOUNCE_MS` | | 2000 | Save a room's document this long after the last edit |
+| `EXECUTOR` | | `local` | `local` (dev only, no sandbox; refused in production) or `judge0` |
+| `JUDGE0_URL` | | RapidAPI's Judge0 CE | Your self-hosted Judge0, or the RapidAPI host |
+| `JUDGE0_RAPIDAPI_KEY` | with a RapidAPI URL | — | Your own key; sent from the server only |
+| `JUDGE0_AUTH_TOKEN` | | — | For a self-hosted Judge0 with auth enabled |
+| `EXECUTION_CONCURRENCY`, `EXECUTION_QUEUE_MAX` | | 2, 50 | Runs at once; runs allowed to wait (beyond that: 503) |
+| `EXECUTIONS_PER_MINUTE` | | 10 | Per user |
+| `RUN_TIMEOUT_MS`, `COMPILE_TIMEOUT_MS`, `RUN_MEMORY_MB` | | 3000, 20000, 256 | Limits per run (memory is enforced by Judge0, not by the local executor) |
 
 **Frontend** (`frontend-next/.env.local`, optional):
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `API_ORIGIN` | `http://localhost:4000` | Where `/api/*` is proxied (server-side only) |
-| `NEXT_PUBLIC_SOCKET_URL` | `http://localhost:4000` | Socket.IO endpoint (from Phase 2) |
+| `NEXT_PUBLIC_SOCKET_URL` | `http://localhost:4000` | Socket.IO endpoint (the socket connects directly; Vercel can't proxy WebSockets) |
 
 ## Tests and lint
 
