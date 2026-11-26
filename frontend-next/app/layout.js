@@ -13,7 +13,7 @@ export default function RootLayout({ children }) {
       <body className="min-h-screen">
         <AuthProvider>
           <Navbar />
-          <main className="mx-auto max-w-5xl px-4 py-10">{children}</main>
+          <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
         </AuthProvider>
       </body>
     </html>

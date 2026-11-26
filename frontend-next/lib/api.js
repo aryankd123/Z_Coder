@@ -19,6 +19,26 @@
 let accessToken = null;
 let refreshInFlight = null;
 let onAuthLost = () => {};
+/** @type {Set<(token: string | null) => void>} */
+const tokenListeners = new Set();
+
+/** Every change to the access token goes through here, so listeners (the socket) hear about it. */
+function setAccessToken(token) {
+  accessToken = token;
+  for (const listener of tokenListeners) listener(token);
+}
+
+/**
+ * Subscribe to access-token changes. The socket uses this to send the new
+ * token to the server (auth:renew) so a long-lived socket isn't cut off when
+ * the old token expires.
+ * @param {(token: string | null) => void} listener
+ * @returns {() => void} unsubscribe
+ */
+export function onAccessTokenChange(listener) {
+  tokenListeners.add(listener);
+  return () => tokenListeners.delete(listener);
+}
 
 /** Typed error carrying the API's { error: { code, message, details } }. */
 export class ApiError extends Error {
@@ -104,10 +124,10 @@ export function refreshSession() {
       const data = globalThis.navigator?.locks
         ? await navigator.locks.request('zcoder-auth-refresh', run)
         : await run();
-      accessToken = data.accessToken;
+      setAccessToken(data.accessToken);
       return data;
     } catch (err) {
-      accessToken = null;
+      setAccessToken(null);
       throw err;
     } finally {
       refreshInFlight = null;
@@ -142,19 +162,19 @@ export async function api(path, options = {}) {
 export const authApi = {
   async signup(input) {
     const data = await request('/auth/signup', { method: 'POST', body: input });
-    accessToken = data.accessToken;
+    setAccessToken(data.accessToken);
     return data;
   },
   async login(input) {
     const data = await request('/auth/login', { method: 'POST', body: input });
-    accessToken = data.accessToken;
+    setAccessToken(data.accessToken);
     return data;
   },
   async logout() {
     try {
       await request('/auth/logout', { method: 'POST' });
     } finally {
-      accessToken = null;
+      setAccessToken(null);
     }
   },
 };

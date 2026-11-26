@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 /** Features in build order. `ready` flips on as each phase ships. */
 const FEATURES = [
   { title: 'Accounts', text: 'Sign up and log in. Sessions use short-lived JWTs plus rotating refresh tokens.', ready: true },
-  { title: 'Rooms & live chat', text: 'Create a room, invite people with a code, chat in real time.', ready: false },
+  { title: 'Rooms & live chat', text: 'Create a room, invite people with a code, chat in real time.', ready: true },
   { title: 'Shared editor', text: 'Everyone edits the same code at once, with live cursors (Yjs CRDT).', ready: false },
   { title: 'Run code', text: 'Run C++, Python and JavaScript on the server; the whole room sees the output.', ready: false },
   { title: 'Q&A board', text: 'Ask a problem, answer others, browse the public feed.', ready: false },
@@ -29,6 +29,11 @@ export default function HomePage() {
           ZCoder is a collaborative coding platform: shared rooms with a live editor, chat, and server-side code
           execution.
         </p>
+        {status === 'authenticated' && (
+          <Link href="/rooms" className="inline-block rounded-md bg-emerald-500 px-4 py-2 font-medium text-slate-950 hover:bg-emerald-400">
+            Go to my rooms
+          </Link>
+        )}
         {status === 'anonymous' && (
           <div className="flex gap-3">
             <Link href="/signup" className="rounded-md bg-emerald-500 px-4 py-2 font-medium text-slate-950 hover:bg-emerald-400">
