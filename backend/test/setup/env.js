@@ -19,3 +19,4 @@ process.env.AUTH_RATE_LIMIT_PER_IP = '10000';
 process.env.LOGIN_FAILURES_PER_EMAIL = '1000';
 process.env.ROOM_JOIN_FAILURES_PER_USER = '1000';
 process.env.CHAT_MESSAGES_PER_10S = '1000';
+process.env.EXECUTIONS_PER_MINUTE = '1000';

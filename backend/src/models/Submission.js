@@ -27,6 +27,9 @@ const MAX_SOURCE_BYTES = 64 * 1024;
 const submissionSchema = new Schema(
   {
     userId: { type: Types.ObjectId, ref: 'User', required: true },
+    // Copied at submit time (like messages.senderName), so the room's
+    // shared console can say "Alice ran this" without a users lookup.
+    userName: { type: String, default: '' },
     roomId: { type: Types.ObjectId, ref: 'Room', default: null },
     language: { type: String, required: true },
     source: { type: String, required: true, maxlength: MAX_SOURCE_BYTES },

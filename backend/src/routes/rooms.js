@@ -2,6 +2,8 @@
 
 const express = require('express');
 const rooms = require('../controllers/roomController');
+const executions = require('../controllers/executionController');
+const { roomExecutionsQuery } = require('../validators/execution');
 const { validate } = require('../middleware/validate');
 const { requireAuth } = require('../middleware/requireAuth');
 const { requireRoomMember } = require('../middleware/requireRoomMember');
@@ -28,6 +30,12 @@ function roomsRouter({ limiters }) {
     validate({ params: v.roomParams, query: v.messagesQuery }),
     requireRoomMember('viewer'),
     rooms.messages,
+  );
+  router.get(
+    '/:roomId/executions',
+    validate({ params: v.roomParams, query: roomExecutionsQuery }),
+    requireRoomMember('viewer'),
+    executions.listForRoom,
   );
   router.patch(
     '/:roomId/members/:userId',

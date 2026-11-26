@@ -72,6 +72,22 @@ function createRoomJoinLimiter(limit) {
 }
 
 /**
+ * Code runs per USER per minute (all runs count, not just failures): each
+ * one costs a compiler and CPU time. Runs after requireAuth.
+ * @param {number} limit runs per minute
+ */
+function createExecutionLimiter(limit) {
+  return rateLimit({
+    windowMs: 60 * 1000,
+    limit,
+    standardHeaders: 'draft-8',
+    legacyHeaders: false,
+    keyGenerator: (req) => `exec:${req.auth.userId}`,
+    handler: (_req, _res, next) => next(tooManyRequests('RATE_LIMITED', 'Too many runs; wait a minute and try again')),
+  });
+}
+
+/**
  * A tiny in-memory fixed-window counter for things that aren't HTTP requests
  * (chat messages over the socket). `consume(key)` returns false once `key`
  * has used up `limit` events in the current window.
@@ -106,4 +122,4 @@ function createWindowLimiter({ limit, windowMs, now = Date.now }) {
   };
 }
 
-module.exports = { createAuthLimiters, createRoomJoinLimiter, createWindowLimiter };
+module.exports = { createAuthLimiters, createRoomJoinLimiter, createExecutionLimiter, createWindowLimiter };

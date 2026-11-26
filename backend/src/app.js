@@ -21,7 +21,7 @@ const cors = require('cors');
 const pinoHttp = require('pino-http');
 const { getConfig } = require('./config');
 const { logger } = require('./lib/logger');
-const { createAuthLimiters, createRoomJoinLimiter } = require('./lib/rateLimit');
+const { createAuthLimiters, createRoomJoinLimiter, createExecutionLimiter } = require('./lib/rateLimit');
 const { healthRouter } = require('./routes/health');
 const { apiRouter } = require('./routes');
 const { notFoundHandler, errorHandler } = require('./middleware/errorHandler');
@@ -32,15 +32,19 @@ const { nullRealtime } = require('./realtime/nullRealtime');
 const SAFE_REQUEST_ID = /^[\w-]{1,64}$/;
 
 /**
- * @param {{ realtime?: typeof nullRealtime }} [deps] the socket layer (RoomManager).
- *   server.js passes the real one; tests may omit it.
+ * @param {{
+ *   realtime?: typeof nullRealtime,
+ *   execution?: ReturnType<typeof import('./execution/executionService').createExecutionService> | null,
+ * }} [deps] realtime = the socket layer (RoomManager); execution = the code
+ *   execution service. server.js passes both; tests may omit them.
  * @returns {import('express').Express}
  */
-function createApp({ realtime = nullRealtime } = {}) {
+function createApp({ realtime = nullRealtime, execution = null } = {}) {
   const config = getConfig();
   const app = express();
-  // Controllers reach the realtime layer through app.locals (no globals).
+  // Controllers reach these through app.locals (no globals).
   app.locals.realtime = realtime;
+  app.locals.execution = execution;
 
   // How many proxies to trust for X-Forwarded-For. Wrong values either
   // let clients spoof their IP (too high) or rate-limit the proxy (too low).
@@ -77,6 +81,7 @@ function createApp({ realtime = nullRealtime } = {}) {
   const limiters = {
     ...createAuthLimiters(config.rateLimits),
     roomJoinFailuresPerUser: createRoomJoinLimiter(config.rateLimits.roomJoinFailuresPerUser),
+    executionsPerUser: createExecutionLimiter(config.execution.perMinute),
   };
   app.use('/api', apiRouter({ limiters }));
 

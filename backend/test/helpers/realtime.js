@@ -12,10 +12,10 @@ const { RoomManager } = require('../../src/realtime/roomManager');
 const { attachGateway } = require('../../src/realtime/gateway');
 
 /**
- * @param {{ roomManager?: RoomManager, extraHandlers?: Function[] }} [options]
+ * @param {{ roomManager?: RoomManager, execution?: object, extraHandlers?: Function[] }} [options]
  */
-async function startServer({ roomManager = new RoomManager(), extraHandlers } = {}) {
-  const app = createApp({ realtime: roomManager });
+async function startServer({ roomManager = new RoomManager(), execution = null, extraHandlers } = {}) {
+  const app = createApp({ realtime: roomManager, execution });
   const server = http.createServer(app);
   const io = attachGateway(server, { roomManager, extraHandlers });
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
