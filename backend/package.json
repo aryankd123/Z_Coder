@@ -15,7 +15,10 @@
     "test": "jest",
     "lint": "eslint .",
     "bench:bcrypt": "node scripts/bench-bcrypt.js",
-    "bench:yjs": "node --expose-gc scripts/bench-yjs-doc.js"
+    "bench:yjs": "node --expose-gc scripts/bench-yjs-doc.js",
+    "bench:index": "node scripts/bench-index.js",
+    "bench:session": "node scripts/bench-session.js",
+    "bench:chat": "node scripts/bench-chat.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
