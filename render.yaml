@@ -1,0 +1,39 @@
+# Render Blueprint for the ZCoder API.
+# Secrets are NOT in this file: every `sync: false` value is entered in the
+# Render dashboard when the Blueprint is applied.
+services:
+  - type: web
+    name: zcoder-api
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
+    # Liveness only: a MongoDB blip shouldn't make Render restart the API.
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      # The local executor has no sandbox and is refused in production.
+      - key: EXECUTOR
+        value: judge0
+      - key: EXECUTION_CONCURRENCY
+        value: "2"
+      # Render's proxy is one hop. REST arrives via Vercel, so req.ip is a Vercel
+      # address; 2 would let direct callers forge X-Forwarded-For.
+      - key: TRUST_PROXY
+        value: "1"
+      # REST calls reach the API from Vercel's servers, so many users share a few
+      # IPs; the per-IP limit is raised and the per-email/per-user limits do the precise work.
+      - key: AUTH_RATE_LIMIT_PER_IP
+        value: "300"
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: MONGODB_URI
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: JUDGE0_RAPIDAPI_KEY
+        sync: false
