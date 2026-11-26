@@ -50,6 +50,36 @@ const envSchema = z.object({
   CHAT_MESSAGES_PER_10S: z.coerce.number().int().min(1).default(20),
   // Save a room's Yjs document this long after the last edit (debounce).
   YJS_PERSIST_DEBOUNCE_MS: z.coerce.number().int().min(10).max(60_000).default(2000),
+
+  // ---- code execution ----
+  // local  = child processes on this machine, NO sandbox (development only;
+  //          refused when NODE_ENV=production, see the check below)
+  // judge0 = Judge0 API called from the server (RapidAPI or self-hosted)
+  EXECUTOR: z.enum(['local', 'judge0']).default('local'),
+  EXECUTION_CONCURRENCY: z.coerce.number().int().min(1).max(16).default(2),
+  // Backpressure: at most this many runs waiting; beyond that, 503 QUEUE_FULL.
+  EXECUTION_QUEUE_MAX: z.coerce.number().int().min(1).max(10_000).default(50),
+  EXECUTIONS_PER_MINUTE: z.coerce.number().int().min(1).default(10),
+  RUN_TIMEOUT_MS: z.coerce.number().int().min(100).max(15_000).default(3000),
+  COMPILE_TIMEOUT_MS: z.coerce.number().int().min(1000).max(60_000).default(20_000),
+  RUN_MEMORY_MB: z.coerce.number().int().min(32).max(512).default(256),
+  JUDGE0_URL: z.url().default('https://judge0-ce.p.rapidapi.com'),
+  JUDGE0_RAPIDAPI_KEY: z.string().min(1).optional(),
+  JUDGE0_AUTH_TOKEN: z.string().min(1).optional(),
+  // Local executor toolchain (dev). Windows' Python launcher is `python`.
+  LOCAL_CXX: z.string().min(1).default('g++'),
+  LOCAL_PYTHON: z.string().min(1).default(process.platform === 'win32' ? 'python' : 'python3'),
+}).superRefine((e, ctx) => {
+  if (e.EXECUTOR === 'local' && e.NODE_ENV === 'production') {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['EXECUTOR'],
+      message: 'local runs user code without a sandbox and is refused in production; use EXECUTOR=judge0',
+    });
+  }
+  if (e.EXECUTOR === 'judge0' && /rapidapi\.com$/i.test(new URL(e.JUDGE0_URL).hostname) && !e.JUDGE0_RAPIDAPI_KEY) {
+    ctx.addIssue({ code: 'custom', path: ['JUDGE0_RAPIDAPI_KEY'], message: 'is required when JUDGE0_URL is a RapidAPI host' });
+  }
 });
 
 /**
@@ -84,6 +114,20 @@ function toConfig(e) {
     trustProxy: e.TRUST_PROXY,
     logLevel: e.LOG_LEVEL,
     yjsPersistDebounceMs: e.YJS_PERSIST_DEBOUNCE_MS,
+    execution: Object.freeze({
+      executor: e.EXECUTOR,
+      concurrency: e.EXECUTION_CONCURRENCY,
+      queueMax: e.EXECUTION_QUEUE_MAX,
+      perMinute: e.EXECUTIONS_PER_MINUTE,
+      limits: Object.freeze({
+        runTimeoutMs: e.RUN_TIMEOUT_MS,
+        compileTimeoutMs: e.COMPILE_TIMEOUT_MS,
+        memoryMb: e.RUN_MEMORY_MB,
+        outputBytes: 64 * 1024,
+      }),
+      judge0: Object.freeze({ url: e.JUDGE0_URL, rapidApiKey: e.JUDGE0_RAPIDAPI_KEY, authToken: e.JUDGE0_AUTH_TOKEN }),
+      local: Object.freeze({ cxx: e.LOCAL_CXX, python: e.LOCAL_PYTHON }),
+    }),
     // Secure cookies need HTTPS. Browsers treat http://localhost as secure, but
     // we only force it in production, where the site is always HTTPS.
     cookieSecure: isProduction,

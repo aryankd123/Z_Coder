@@ -41,9 +41,39 @@ describe('loadConfig', () => {
   });
 
   test('parses a comma-separated CORS allowlist and production flags', () => {
-    const c = loadConfig({ ...minimal, NODE_ENV: 'production', CORS_ORIGINS: 'https://a.app, https://b.app' });
+    const c = loadConfig({
+      ...minimal,
+      NODE_ENV: 'production',
+      CORS_ORIGINS: 'https://a.app, https://b.app',
+      EXECUTOR: 'judge0',
+      JUDGE0_URL: 'https://judge0.internal.example',
+    });
     expect(c.corsOrigins).toEqual(['https://a.app', 'https://b.app']);
     expect(c.isProduction).toBe(true);
     expect(c.cookieSecure).toBe(true);
+  });
+
+  describe('code execution', () => {
+    test('defaults to the local executor in development', () => {
+      expect(loadConfig(minimal).execution).toMatchObject({ executor: 'local', concurrency: 2, perMinute: 10 });
+    });
+
+    test('REFUSES the unsandboxed local executor in production, including by default', () => {
+      expect(() => loadConfig({ ...minimal, NODE_ENV: 'production' })).toThrow(/EXECUTOR: local runs user code without a sandbox/);
+      expect(() => loadConfig({ ...minimal, NODE_ENV: 'production', EXECUTOR: 'local' })).toThrow(/refused in production/);
+    });
+
+    test('Judge0 on RapidAPI needs a key; a self-hosted Judge0 does not; the key is never echoed', () => {
+      expect(() => loadConfig({ ...minimal, EXECUTOR: 'judge0' })).toThrow(/JUDGE0_RAPIDAPI_KEY: is required/);
+      const key = 'rapidapi-key-that-must-not-be-echoed';
+      const c = loadConfig({ ...minimal, EXECUTOR: 'judge0', JUDGE0_RAPIDAPI_KEY: key });
+      expect(c.execution.judge0.rapidApiKey).toBe(key);
+      expect(loadConfig({ ...minimal, EXECUTOR: 'judge0', JUDGE0_URL: 'http://localhost:2358' }).execution.executor).toBe('judge0');
+      try {
+        loadConfig({ ...minimal, EXECUTOR: 'judge0', JUDGE0_RAPIDAPI_KEY: key, RUN_TIMEOUT_MS: '1' });
+      } catch (err) {
+        expect(err.message).not.toContain(key);
+      }
+    });
   });
 });
