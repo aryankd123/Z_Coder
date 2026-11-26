@@ -6,8 +6,8 @@ ZCoder is a collaborative coding platform. You create a room, invite people with
 - **Backend:** Node.js (Express 5), MongoDB (Mongoose 8), Socket.IO and Yjs.
 
 > **Status:** v2 is being rebuilt from scratch.
-> - **Done:** accounts and authentication, and the data model with indexes.
-> - **In progress:** rooms and chat, the shared editor, and code execution.
+> - **Done:** accounts and authentication, the data model with indexes, and rooms with presence and live chat.
+> - **In progress:** the shared editor and code execution.
 
 ## Architecture
 
@@ -77,6 +77,8 @@ The API **refuses to start** if a required variable is missing or invalid, and i
 | `CORS_ORIGINS` | | `http://localhost:3000` | Comma-separated |
 | `TRUST_PROXY` | | 0 | Proxy hops in front of the API |
 | `AUTH_RATE_LIMIT_PER_IP`, `LOGIN_FAILURES_PER_EMAIL` | | 50, 5 | Per 15 minutes |
+| `ROOM_JOIN_FAILURES_PER_USER` | | 10 | Wrong room password or unknown code, per 15 minutes |
+| `CHAT_MESSAGES_PER_10S` | | 20 | Chat messages per user per 10 seconds |
 
 **Frontend** (`frontend-next/.env.local`, optional):
 
