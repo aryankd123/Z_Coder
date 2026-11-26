@@ -5,6 +5,7 @@ const { authRouter } = require('./auth');
 const { usersRouter } = require('./users');
 const { roomsRouter } = require('./rooms');
 const { executionsRouter } = require('./executions');
+const { problemsRouter } = require('./problems');
 
 /**
  * Everything under /api. New feature routers get mounted here as each phase lands.
@@ -16,6 +17,7 @@ function apiRouter({ limiters }) {
   router.use('/users', usersRouter());
   router.use('/rooms', roomsRouter({ limiters }));
   router.use('/executions', executionsRouter({ limiters }));
+  router.use('/problems', problemsRouter());
   return router;
 }
 

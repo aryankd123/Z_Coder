@@ -5,7 +5,7 @@
  * the hot chat-history query must use its index with no in-memory sort.
  */
 const mongoose = require('mongoose');
-const { Message, Room, User } = require('../src/models');
+const { Message, Problem, Room, User } = require('../src/models');
 const { setupTestDb, teardownTestDb } = require('./helpers/db');
 
 beforeAll(setupTestDb);
@@ -61,6 +61,19 @@ describe('query plans', () => {
     expect(stages.some((s) => s.stage === 'SORT')).toBe(false);
     expect(ex.executionStats.nReturned).toBe(50);
     expect(ex.executionStats.totalDocsExamined).toBe(50); // reads exactly what it returns
+  });
+
+  test('the public problem feed is an index scan on { isPublic, _id } with no SORT stage', async () => {
+    const authorId = new mongoose.Types.ObjectId();
+    await Problem.insertMany(
+      Array.from({ length: 60 }, (_, i) => ({ authorId, authorName: 'A', title: `title ${i}`, body: 'b'.repeat(20), isPublic: i % 3 !== 0 })),
+    );
+    const explained = await Problem.find({ isPublic: true }).sort({ _id: -1 }).limit(21).explain('executionStats');
+    const ex = Array.isArray(explained) ? explained[0] : explained;
+    const stages = stagesOf(ex.queryPlanner.winningPlan);
+    expect(stages.some((s) => s.stage === 'IXSCAN' && s.indexName === 'isPublic_1__id_-1')).toBe(true);
+    expect(stages.some((s) => s.stage === 'SORT')).toBe(false);
+    expect(ex.executionStats.totalDocsExamined).toBe(21);
   });
 
   test('passwordHash is never selected unless explicitly requested', async () => {
