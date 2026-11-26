@@ -34,6 +34,7 @@ const initialState = {
   loadingOlder: false,
   online: [], // [{ userId, name, role, tabs }]
   connection: 'connecting', // connecting | connected | reconnecting
+  joinCount: 0, // bumps on every successful room:join; the editor re-syncs Yjs on each
 };
 
 /** ObjectIds are fixed-length hex starting with a timestamp, so string order = time order. */
@@ -68,7 +69,7 @@ function reducer(state, action) {
     case 'connection':
       return { ...state, connection: action.connection };
     case 'joined':
-      return { ...state, myRole: action.role, online: action.presence };
+      return { ...state, myRole: action.role, online: action.presence, joinCount: state.joinCount + 1 };
     case 'presence':
       return { ...state, online: action.online };
     case 'role':

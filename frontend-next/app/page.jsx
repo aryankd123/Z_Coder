@@ -7,7 +7,7 @@ import { useAuth } from '@/lib/auth-context';
 const FEATURES = [
   { title: 'Accounts', text: 'Sign up and log in. Sessions use short-lived JWTs plus rotating refresh tokens.', ready: true },
   { title: 'Rooms & live chat', text: 'Create a room, invite people with a code, chat in real time.', ready: true },
-  { title: 'Shared editor', text: 'Everyone edits the same code at once, with live cursors (Yjs CRDT).', ready: false },
+  { title: 'Shared editor', text: 'Everyone edits the same code at once, with live cursors (Yjs CRDT).', ready: true },
   { title: 'Run code', text: 'Run C++, Python and JavaScript on the server; the whole room sees the output.', ready: false },
   { title: 'Q&A board', text: 'Ask a problem, answer others, browse the public feed.', ready: false },
 ];

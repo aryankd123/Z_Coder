@@ -7,6 +7,7 @@
  * components get `params` as a Promise instead).
  */
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import RequireAuth from '@/components/RequireAuth';
@@ -15,7 +16,12 @@ import MembersPanel from '@/components/room/MembersPanel';
 import ConnectionBadge from '@/components/room/ConnectionBadge';
 import { useAuth } from '@/lib/auth-context';
 import { useRoom } from '@/lib/use-room';
-import { languageById } from '@/lib/languages';
+
+// Monaco touches `window`, so the editor only ever renders in the browser.
+const CodeEditor = dynamic(() => import('@/components/room/CodeEditor'), {
+  ssr: false,
+  loading: () => <p className="p-4 text-sm text-slate-500">Loading editor…</p>,
+});
 
 function InviteCode({ code }) {
   const [copied, setCopied] = useState(false);
@@ -68,9 +74,16 @@ function Room({ roomId }) {
       </header>
 
       <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[1fr_320px]">
-        <section className="flex min-h-[300px] items-center justify-center rounded-lg border border-dashed border-slate-700 text-sm text-slate-500">
-          Shared {languageById(room.room.language).label} editor arrives in Phase 3.
-        </section>
+        <div className="flex min-h-0 flex-col gap-3">
+          <CodeEditor
+            socket={room.socket}
+            roomId={roomId}
+            joinCount={room.joinCount}
+            canEdit={room.myRole === 'editor' || room.myRole === 'owner'}
+            me={user}
+            initialLanguage={room.room.language}
+          />
+        </div>
         <aside className="flex min-h-0 flex-col gap-3">
           <MembersPanel members={room.room.members} online={room.online} meId={user.id} />
           <ChatPanel
