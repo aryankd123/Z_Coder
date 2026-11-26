@@ -6,7 +6,7 @@
  * In Next 16, client components read route params with useParams() (server
  * components get `params` as a Promise instead).
  */
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
@@ -14,6 +14,7 @@ import RequireAuth from '@/components/RequireAuth';
 import ChatPanel from '@/components/room/ChatPanel';
 import MembersPanel from '@/components/room/MembersPanel';
 import ConnectionBadge from '@/components/room/ConnectionBadge';
+import RunPanel from '@/components/room/RunPanel';
 import { useAuth } from '@/lib/auth-context';
 import { useRoom } from '@/lib/use-room';
 
@@ -44,6 +45,13 @@ function InviteCode({ code }) {
 function Room({ roomId }) {
   const { user } = useAuth();
   const room = useRoom(roomId, user);
+  // The editor hands us its Y.Doc and language; Run sends exactly what everyone sees.
+  const docRef = useRef(null);
+  const [liveLanguage, setLiveLanguage] = useState(null);
+  const onDocReady = useCallback((doc) => {
+    docRef.current = doc;
+  }, []);
+  const getSource = useCallback(() => docRef.current?.getText('code').toString() ?? '', []);
 
   if (room.status === 'loading') return <p className="text-slate-400">Opening room…</p>;
   if (room.status === 'gone' || room.status === 'error') {
@@ -82,6 +90,15 @@ function Room({ roomId }) {
             canEdit={room.myRole === 'editor' || room.myRole === 'owner'}
             me={user}
             initialLanguage={room.room.language}
+            onDocReady={onDocReady}
+            onLanguageChange={setLiveLanguage}
+          />
+          <RunPanel
+            roomId={roomId}
+            socket={room.socket}
+            canRun={room.myRole === 'editor' || room.myRole === 'owner'}
+            language={liveLanguage ?? room.room.language}
+            getSource={getSource}
           />
         </div>
         <aside className="flex min-h-0 flex-col gap-3">
