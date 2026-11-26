@@ -26,6 +26,9 @@ export default function Navbar() {
               <Link href="/rooms" className="rounded-md px-3 py-1.5 hover:bg-slate-800">
                 Rooms
               </Link>
+              <Link href="/problems" className="rounded-md px-3 py-1.5 hover:bg-slate-800">
+                Problems
+              </Link>
               <Link href="/profile" className="hidden text-slate-400 hover:text-slate-200 sm:inline">
                 {user.name}
               </Link>
